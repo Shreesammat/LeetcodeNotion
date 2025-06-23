@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "LeetcodeNotion",
+    "description": "Saves leetcode questions to Notion automatically",
+    "version": "1.0",
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "images/project16.png",
+            "32": "images/project32.png",
+            "48": "images/project48.png",
+            "128": "images/project128.png"
+        }
+    },
+    "permissions": ["activeTab", "scripting"],
+    "host_permissions": [
+        "https://leetcode.com/problems/*",
+        "https://api.notion.com/*"
+        
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://leetcode.com/problems/*"],
+            "js": ["content.js"]
+        }
+    ]
+    
+}
