@@ -1,56 +1,45 @@
 document.getElementById("send").addEventListener("click", () => {
-  if (!document.getElementById("status")) {
-    document.getElementById("status").textContent = "Sending...";
-  }
+  const statusElement = document.getElementById("status");
+  const successSound = new Audio(chrome.runtime.getURL("success.mp3"));
+  const failSound = new Audio(chrome.runtime.getURL("failure.mp3"));
 
-  console.log(document.getElementById("status"));
+  statusElement.textContent = "Sending...";
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const activeTab = tabs[0];
-    const successSound = new Audio(chrome.runtime.getURL("/success.mp3"));
-    const failSound = new Audio(chrome.runtime.getURL("/failure.mp3"));
 
     chrome.tabs.sendMessage(activeTab.id, { action: "scrape" }, (response) => {
-      if (chrome.runtime.lastError) {
-        document.getElementById("status").textContent =
-          "Error: " + chrome.runtime.lastError.message;
+      if (chrome.runtime.lastError || !response) {
+        failSound.play();
+        statusElement.textContent = "❌ Error: " + (chrome.runtime.lastError?.message || "No response");
         return;
       }
 
-      if (response) {
-        successSound.play();
-        document.getElementById(
-          "status"
-        ).textContent = `✅ Sent:\n${response.problemNo} [${response.difficulty}]`;
-        console.log("Response data:", response);
+      console.log("Scraped Response:", response);
 
-        chrome.runtime.sendMessage(
-          {
-            action: "saveToNotion",
-            data: response,
-          },
-          (saveResponse) => {
-            // Check if the save was successful and update the popup
-            if (saveResponse.status) {
-              document.getElementById("status").textContent =
-                saveResponse.status;
-              // Display the link to the Notion page
-              const notionLink = document.createElement("a");
-              notionLink.href = saveResponse.notionPageUrl;
-              notionLink.target = "_blank";
-              notionLink.textContent = "View the page in Notion";
-              document.getElementById("status").appendChild(notionLink);
-            } else {
-              document.getElementById(
-                "status"
-              ).textContent = `Error: ${saveResponse.error}`;
-            }
+      chrome.runtime.sendMessage(
+        {
+          action: "saveToNotion",
+          data: response,
+        },
+        (saveResponse) => {
+          if (saveResponse.status && !saveResponse.error) {
+            successSound.play();
+            statusElement.textContent = `✅ ${saveResponse.status}`;
+
+            // Link to Notion page
+            const notionLink = document.createElement("a");
+            notionLink.href = saveResponse.notionPageUrl;
+            notionLink.target = "_blank";
+            notionLink.textContent = " → View in Notion";
+            notionLink.style.display = "block";
+            statusElement.appendChild(notionLink);
+          } else {
+            failSound.play();
+            statusElement.textContent = `❌ Error: ${saveResponse.error || "Unknown error"}`;
           }
-        );
-      } else {
-        failSound.play();
-        document.getElementById("status").textContent = "No response from tab.";
-      }
+        }
+      );
     });
   });
 });
